@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Suivi Nutrition — Accueil</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- ZXing (scan barcode) -->
+  <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
+  <style>
+    :root{ --bg:#f6f8fb; --card:#fff; --accent:#15b79a; --accent-2:#0f9e85; --muted:#6c7780; --danger:#e74c3c; --radius:14px; --glass: rgba(255,255,255,0.6) }
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; font-family:"Outfit",system-ui, -apple-system, "Segoe UI", Roboto, Arial; -webkit-font-smoothing:antialiased}
+    body{background:linear-gradient(180deg,var(--bg),#eef4f8); color:#132a31; padding-bottom:120px}
+    .app{max-width:980px; margin:14px auto; padding:12px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{
+      width:56px;height:56px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+     
+      box-shadow:0 10px 30px rgba(18,160,127,0.12);
+    }
+    .logo img{ width:36px; height:36px; display:block }
+    h1{font-size:18px;margin:0}
+    p.lead{margin:0;font-size:12px;color:var(--muted)}
+    .container{display:grid;grid-template-columns:1fr;gap:14px}
+    .card{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:0 10px 30px rgba(17,36,45,0.05);border:1px solid rgba(15,25,30,0.03)}
+    /* Summary + date layout - improved */
+    .top-row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px; flex:1; min-width:260px}
+    .summary-item{display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:linear-gradient(180deg,#fff,#fbfffd)}
+    .summary-item .icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(21,183,154,0.09);color:var(--accent-2);font-weight:700}
+    .summary-item small{display:block;color:var(--muted);font-size:12px}
+    .summary-item strong{display:block;font-size:16px;margin-top:2px}
+    .date-card{min-width:220px; max-width:320px; background:linear-gradient(180deg,rgba(255,255,255,0.95),var(--card)); padding:12px; border-radius:12px; border:1px solid rgba(15,25,30,0.03)}
+    .date-card .date-row{display:flex; gap:8px; align-items:center;}
+    .date-card .date-row input{flex:1; padding:10px; border-radius:10px; border:1px solid rgba(15,25,30,0.06); background:#fff}
+    .date-card .day-totals{margin-top:10px; display:flex; flex-direction:column; gap:6px; color:var(--muted)}
+    .date-card .day-totals .big{font-weight:700; color:#13333a}
+    /* Calendar */
+    .calendar {
+      margin-top:12px;
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+    .calendar .panel {
+      min-width:260px;
+      max-width:320px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), var(--card));
+      border-radius:12px;
+      padding:10px;
+      border:1px solid rgba(15,25,30,0.03);
+      box-shadow:0 8px 24px rgba(10,20,30,0.04);
+    }
+    .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .cal-header button{background:transparent;border:none;padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--muted)}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-grid .dow{font-size:12px;color:var(--muted);text-align:center}
+    .day{
+      height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+      font-size:14px; color:#15303a;
+    }
+    .day.other{ color:rgba(20,30,40,0.25) }
+    .day.today{ border:1px dashed rgba(20,30,40,0.08) }
+    .day.selected{ background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:white; box-shadow:0 8px 20px rgba(18,160,127,0.12) }
+    .day.has-meal::after{ content:''; width:6px; height:6px; background:var(--accent-2); border-radius:999px; position:relative; top:6px; display:block; margin-top:6px; opacity:0.9 }
+    /* Form & list */
+    form{display:flex;flex-direction:column;gap:10px}
+    label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type="text"],input[type="number"],select{
+      width:100%;padding:12px;border-radius:10px;border:1px solid rgba(15,25,30,0.06);font-size:14px;background:#fff
+    }
+    input:focus,select:focus{outline:none;box-shadow:0 8px 24px rgba(18,160,127,0.08);border-color:var(--accent-2)}
+    .row{display:flex;gap:8px}
+    .row .col{flex:1}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+    .btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(15,25,30,0.04)}
+    .meals-list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+    .meal-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px;border-radius:10px;background:#fbfeff;border:1px solid rgba(12,25,30,0.03)}
+    .meal-left{display:flex;gap:10px;align-items:center;min-width:0}
+    .avatar{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#ffd6a5,#ff8a7d);display:flex;align-items:center;justify-content:center;color:#2b2b2b;font-weight:700}
+    .meal-meta strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .meal-meta small{display:block;color:var(--muted)}
+    .meal-actions{display:flex;gap:8px;align-items:center}
+    .icon-btn{background:transparent;border:none;padding:8px;border-radius:8px;cursor:pointer;color:var(--muted)}
+    .icon-btn.del{color:var(--danger);background:linear-gradient(180deg, rgba(231,76,60,0.06), rgba(231,76,60,0.02))}
+    /* Quick stats */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .stat{display:flex;flex-direction:column;gap:6px}
+    .progress-wrap{background:#f1f6f6;border-radius:999px;overflow:hidden;height:12px}
+    .progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .3s}
+    /* Scanner modal */
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:120; background:rgba(10,15,20,0.45); }
+    .modal.active { display:flex; }
+    .scanner-sheet { width:calc(100% - 40px); max-width:680px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 30px 80px rgba(10,20,30,0.3); }
+    .scanner-video { width:100%; border-radius:8px; background:#000; height:320px; object-fit:cover; }
+    .scanner-controls{display:flex;gap:8px;margin-top:8px}
+    /* Nav - restored older icons + scanner icon */
+    .nav-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;width:calc(100% - 22px);max-width:720px;height:68px;background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0.9));display:flex;justify-content:space-around;align-items:center;border-radius:999px;box-shadow:0 18px 40px rgba(12,30,40,0.12);padding:8px;z-index:70}
+    .nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);background:transparent;border:none;padding:8px 12px;border-radius:12px;cursor:pointer;font-size:12px}
+    .nav-item.active{color:var(--accent-2);background:linear-gradient(180deg, rgba(21,183,154,0.06), rgba(21,183,154,0.03))}
+    @media (max-width:720px){ .summary-grid{grid-template-columns:repeat(2,1fr)} .calendar .panel{min-width:100%; max-width:100%} }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Suivi Nutrition — Accueil">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true" title="Suivi Nutrition">
+          <!-- inline SVG logo for immediate branding -->
+          <img alt="Logo SN" src="data:image/svg+xml;utf8,
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'>
+              <defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='%2315b79a'/><stop offset='1' stop-color='%230fa07f'/></linearGradient></defs>
+              <rect width='48' height='48' rx='10' fill='url(%23g)'/>
+              <g fill='white' transform='translate(8,8)'>
+                <path d='M8 0C5.2 0 3 2.2 3 5s2.2 5 5 5 5-2.2 5-5S10.8 0 8 0zm0 2c1.7 0 3 1.3 3 3s-1.3 3-3 3-3-1.3-3-3 1.3-3 3-3z' />
+                <path d='M0 20c0-4.4 4-8 8.9-8h6.2C24 12 28 15.6 28 20v3H0v-3z' opacity='0.95'/>
+              </g>
+            </svg>" />
+        </div>
+        <div>
+          <h1> Accueil</h1>
+          <p class="lead">Repas et objectifs — navigation par jour</p>
+        </div>
+      </div>
+      <!-- header buttons removed as requested -->
+    </header>
+
+    <main class="container" id="main">
+      <section class="card" aria-labelledby="dashTitle">
+        <h2 id="dashTitle" style="margin:0 0 8px 0;color:#13333a">Tableau de bord — jour sélectionné</h2>
+
+        <div class="top-row">
+          <div style="width:100%">
+            <div class="summary-grid" aria-hidden="false">
+              <div class="summary-item">
+                <div class="icon" aria-hidden="true">🍽️</div>
+                <div><small>Repas</small><strong id="totalMeals">0</strong></div>
+              </div>
+
+              <div class="summary-item">
+                <div class="icon" aria-hidden="true">🔥</div>
+                <div><small>Calories</small><strong id="totalCalories">0 kcal</strong></div>
+              </div>
+
+              <div class="summary-item">
+                <div class="icon" aria-hidden="true">💪</div>
+                <div><small>Protéines</small><strong id="totalProteines">0 g</strong></div>
+              </div>
+
+              <div class="summary-item">
+                <div class="icon" aria-hidden="true">🍞</div>
+                <div><small>Glucides</small><strong id="totalGlucides">0 g</strong></div>
+              </div>
+            </div>
+
+            <!-- Dashboard progress (new) -->
+            <div style="margin-top:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:13px;color:var(--muted)">Progression objectif calories</div>
+                <div id="dashboardPercent" style="font-size:13px;color:var(--muted)">0%</div>
+              </div>
+              <div class="progress-wrap" style="margin-top:8px;height:12px;border-radius:10px;">
+                <div id="dashboardProgress" class="progress-bar" style="height:100%;border-radius:10px;width:0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="date-card" aria-hidden="false">
+            <label style="font-size:13px;color:var(--muted);margin-bottom:6px;display:block">Date sélectionnée</label>
+            <div class="date-row">
+              <input id="selectedDateInput" type="date" />
+              <button id="todayBtn" class="btn ghost">Aujourd'hui</button>
+            </div>
+
+            <div class="day-totals" aria-live="polite">
+              <div style="font-size:13px;color:var(--muted)">Journée</div>
+              <div class="big" id="selectedDateLabel">—</div>
+              <div style="display:flex;justify-content:space-between;margin-top:6px;color:var(--muted)"><div>Total</div><div id="statusCalories">0 kcal</div></div>
+              <div style="display:flex;justify-content:space-between;color:var(--muted)"><div>Protéines</div><div id="totalProteinesShort">0 g</div></div>
+              <div style="display:flex;justify-content:space-between;color:var(--muted)"><div>Glucides</div><div id="totalGlucidesShort">0 g</div></div>
+
+              <!-- Scanner trigger -->
+              <div style="margin-top:10px">
+                <button id="openScannerBtn" class="btn ghost" type="button">Scanner un code-barres</button>
+                <div style="margin-top:6px;color;font-size:12px">Vous pouvez scanner un code-barres pour pré-remplir l'aliment.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="calendar" id="calendarWrap">
+          <div class="panel" id="monthPanel">
+            <div class="cal-header">
+              <button id="prevMonth" title="Mois précédent">‹</button>
+              <div style="font-weight:700" id="monthLabel">Décembre 2024</div>
+              <button id="nextMonth" title="Mois suivant">›</button>
+            </div>
+            <div class="cal-grid" id="dowRow">
+              <div class="dow">Lun</div><div class="dow">Mar</div><div class="dow">Mer</div><div class="dow">Jeu</div><div class="dow">Ven</div><div class="dow">Sam</div><div class="dow">Dim</div>
+            </div>
+            <div class="cal-grid" id="daysGrid" style="margin-top:8px"></div>
+          </div>
+
+          <div class="panel" style="flex:1; min-width:260px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div>
+                <!-- 'Ajouter / Voir' label removed as requested -->
+                <div style="font-weight:700" id="selectedDateLabelShort">—</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:12px;color:var(--muted)">Totaux</div>
+                <div style="font-weight:700" id="dayTotalsShort">0 kcal • 0 g P • 0 g C</div>
+              </div>
+            </div>
+
+            <!-- Heading 'Ajouter un repas' removed; form kept -->
+            <form id="mealForm" autocomplete="off">
+              <label for="aliment">Aliment</label>
+              <input id="aliment" name="aliment" type="text" placeholder="Ex: Poulet grillé" required />
+
+              <div class="row">
+                <div class="col"><label for="categorie">Catégorie</label>
+                  <select id="categorie" name="categorie"><option>Entrée</option><option selected>Plat</option><option>Dessert</option><option>Snack</option></select>
+                </div>
+                <div class="col"><label for="quantite">Quantité</label><input id="quantite" name="quantite" type="text" placeholder="Ex: 150 g" /></div>
+              </div>
+
+              <div class="row">
+                <div class="col"><label for="calories">Calories (kcal)</label><input id="calories" name="calories" type="number" min="0" /></div>
+                <div class="col"><label for="proteines">Protéines (g)</label><input id="proteines" name="proteines" type="number" min="0" step="0.1" /></div>
+              </div>
+
+              <div class="row">
+                <div class="col"><label for="glucides">Glucides (g)</label><input id="glucides" name="glucides" type="number" min="0" step="0.1" /></div>
+                <div class="col"><label for="lipides">Lipides (g)</label><input id="lipides" name="lipides" type="number" min="0" step="0.1" /></div>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <button type="submit" class="btn" id="addBtn">Ajouter</button>
+                <button type="button" id="clearBtn" class="btn ghost">Effacer</button>
+              </div>
+            </form>
+
+            <div style="margin-top:12px">
+              <h4 style="margin:0 0 8px 0">Repas du jour</h4>
+              <div id="mealsContainer" class="meals-list" aria-live="polite"></div>
+              <div id="emptyState" style="color:var(--muted);margin-top:8px;display:none">Aucun repas pour cette date — ajoutez-en un.</div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="card" style="margin-top:12px">
+        <h3 style="margin:0 0 8px 0;color:#13333a">Aperçu rapides</h3>
+        <div class="grid-2">
+          <div>
+            <small style="color:var(--muted)">Total consommé (jour)</small>
+            <div style="font-weight:700;margin-top:6px" id="statusCalories">0 kcal</div>
+            <div class="progress-wrap" style="margin-top:8px"><div id="progressBar" class="progress-bar"></div></div>
+            <div style="margin-top:8px;color:var(--muted)">Atteint <strong id="percentReached">0%</strong></div>
+          </div>
+
+          <div>
+            <small style="color:var(--muted)">Totaux macros (jour)</small>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+              <div style="display:flex;justify-content:space-between;color:#13333a"><div>Protéines</div><div id="totalProteinesShort2">0 g</div></div>
+              <div style="display:flex;justify-content:space-between;color:#13333a"><div>Glucides</div><div id="totalGlucidesShort2">0 g</div></div>
+              <div style="display:flex;justify-content:space-between;color:#13333a"><div>Lipides</div><div id="totalLipidesShort">0 g</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Scanner modal -->
+  <div id="scannerModal" class="modal" aria-hidden="true">
+    <div class="scanner-sheet" role="dialog" aria-modal="true" aria-labelledby="scannerTitle">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="scannerTitle" style="margin:0">Scanner un code-barres</h3>
+        <div>
+          <button id="closeScannerBtn" class="btn ghost" type="button">Fermer</button>
+        </div>
+      </div>
+
+      <video id="scannerVideo" class="scanner-video" autoplay muted playsinline></video>
+      <div style="margin-top:8px;color:var(--muted);font-size:13px">Le scanner utilisera votre caméra. Autorisez l'accès si demandé.</div>
+
+      <div class="scanner-controls">
+        <select id="videoSelect" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(15,25,30,0.06)"></select>
+        <button id="startScannerBtn" class="btn" type="button">Démarrer</button>
+        <button id="stopScannerBtn" class="btn ghost" type="button">Arrêter</button>
+      </div>
+
+      <div style="margin-top:10px">
+        <label style="font-size:13px;color:var(--muted);">Résultat</label>
+        <div id="scanResult" style="padding:8px;border-radius:8px;background:#f6f8fa;border:1px solid rgba(15,25,30,0.03)">—</div>
+        <div style="margin-top:8px;color:var(--muted);font-size:13px">Si le scan trouve un code, vous pouvez l'insérer dans le champ "Aliment".</div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button id="useScanBtn" class="btn" type="button">Insérer dans Aliment</button>
+          <input id="uploadImage" type="file" accept="image/*" style="display:none" />
+          <button id="uploadBtn" class="btn ghost" type="button">Scanner depuis image</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav-bar" role="navigation" aria-label="Navigation">
+    <!-- Restored older SVG icons -->
+    <button class="nav-item active" data-page="dashboard" aria-label="Dashboard">
+      <div style="display:flex;align-items:center;justify-content:center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 13.5V21H10V13.5H3Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 3.5V21H21V3.5H14Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>Accueil</span>
+    </button>
+
+    <button class="nav-item" data-page="add" aria-label="Ajouter">
+      <div style="display:flex;align-items:center;justify-content:center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 5V19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M5 12H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span>Ajouter</span>
+    </button>
+
+    <button class="nav-item" data-page="scan" aria-label="Scanner">
+      <div style="display:flex;align-items:center;justify-content:center">
+        <!-- Barcode icon -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M2 7H4V17H2V7Z" fill="currentColor"/>
+          <path d="M6 7H7V17H6V7Z" fill="currentColor"/>
+          <path d="M9 7H10V17H9V7Z" fill="currentColor"/>
+          <path d="M12 7H13V17H12V7Z" fill="currentColor"/>
+          <path d="M15 7H16V17H15V7Z" fill="currentColor"/>
+          <path d="M18 7H20V17H18V7Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <span>Scanner</span>
+    </button>
+
+    <button class="nav-item" data-page="account" aria-label="Compte">
+      <div style="display:flex;align-items:center;justify-content:center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>Compte</span>
+    </button>
+  </nav>
+
+<script>
+/* Storage keys */
+const STORAGE_KEY = 'sn_v2_meals';
+const PROFILE_KEY = 'sn_v2_profile';
+
+/* Load meals (migrate if needed) */
+let meals = [];
+try{
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    meals = JSON.parse(raw);
+    const todayISO = (new Date()).toISOString().slice(0,10);
+    let migrated = false;
+    meals = meals.map(m => {
+      if(!m.date){ migrated = true; return Object.assign({}, m, {date: todayISO}); }
+      return m;
+    });
+    if(migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
+  }
+}catch(e){ console.warn('Could not read meals', e); meals = []; }
+
+/* Load profile for goal */
+let profile = { goalCalories:2000 };
+try{
+  const p = localStorage.getItem(PROFILE_KEY);
+  if(p) profile = Object.assign(profile, JSON.parse(p));
+}catch(e){}
+
+/* DOM refs */
+const selectedDateInput = document.getElementById('selectedDateInput');
+const selectedDateLabel = document.getElementById('selectedDateLabel');
+const selectedDateLabelShort = document.getElementById('selectedDateLabelShort');
+const totalMealsEl = document.getElementById('totalMeals');
+const totalCaloriesEl = document.getElementById('totalCalories');
+const totalProteinesEl = document.getElementById('totalProteines');
+const totalGlucidesEl = document.getElementById('totalGlucides');
+const mealsContainer = document.getElementById('mealsContainer');
+const emptyState = document.getElementById('emptyState');
+const statusCalories = document.getElementById('statusCalories');
+const progressBar = document.getElementById('progressBar');
+const percentReached = document.getElementById('percentReached');
+const totalProteinesShort = document.getElementById('totalProteinesShort');
+const totalGlucidesShort = document.getElementById('totalGlucidesShort');
+const totalProteinesShort2 = document.getElementById('totalProteinesShort2');
+const totalGlucidesShort2 = document.getElementById('totalGlucidesShort2');
+const totalLipidesShort = document.getElementById('totalLipidesShort');
+const dayTotalsShort = document.getElementById('dayTotalsShort');
+const monthLabel = document.getElementById('monthLabel');
+const daysGrid = document.getElementById('daysGrid');
+const prevMonthBtn = document.getElementById('prevMonth');
+const nextMonthBtn = document.getElementById('nextMonth');
+const mealForm = document.getElementById('mealForm');
+const addBtn = document.getElementById('addBtn');
+const clearBtn = document.getElementById('clearBtn');
+
+const dashboardProgress = document.getElementById('dashboardProgress');
+const dashboardPercent = document.getElementById('dashboardPercent');
+
+let selectedDate = null;
+let viewYear = null;
+let viewMonth = null;
+
+/* Utilities - use local-date based ISO to avoid UTC shift */
+function toISODate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function parseISO(s){
+  // s expected 'YYYY-MM-DD' -> create local date at midnight
+  if(!s) return new Date();
+  const parts = s.split('-').map(Number);
+  return new Date(parts[0], parts[1]-1, parts[2]);
+}
+function formatDateLabel(iso){ const d = parseISO(iso); return d.toLocaleDateString(undefined, {weekday:'long', day:'numeric', month:'long', year:'numeric'}); }
+
+/* Init selectedDate (force to today's local date when page loads) */
+function initSelectedDate(){
+  const today = toISODate(new Date());
+  const inputVal = selectedDateInput.value;
+  if(inputVal && /^\d{4}-\d{2}-\d{2}$/.test(inputVal)){
+    selectedDate = inputVal;
+  } else {
+    selectedDate = today;
+    selectedDateInput.value = selectedDate;
+  }
+  const dt = parseISO(selectedDate);
+  viewYear = dt.getFullYear();
+  viewMonth = dt.getMonth();
+}
+
+/* Save meals */
+function saveMeals(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(meals)); }catch(e){ console.warn('save failed', e); } }
+
+/* Totals for date */
+function totalsForDate(isoDate){
+  const t = meals.filter(m => m.date === isoDate).reduce((s,m)=>{
+    s.cal += Number(m.calories||0);
+    s.p += Number(m.proteines||0);
+    s.c += Number(m.glucides||0);
+    s.f += Number(m.lipides||0);
+    s.count += 1;
+    return s;
+  }, {cal:0,p:0,c:0,f:0,count:0});
+  return t;
+}
+
+/* Days with meals in month */
+function daysWithMealsInMonth(year, month){
+  const out = {};
+  meals.forEach(m => {
+    if(!m.date) return;
+    const d = parseISO(m.date);
+    if(d.getFullYear() === year && d.getMonth() === month){
+      out[m.date] = (out[m.date] || 0) + 1;
+    }
+  });
+  return out;
+}
+
+/* Render calendar */
+function renderCalendar(){
+  monthLabel.textContent = new Date(viewYear, viewMonth, 1).toLocaleDateString(undefined, {month:'long', year:'numeric'});
+  daysGrid.innerHTML = '';
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startIndex = (firstDay.getDay() + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const prevMonthDays = startIndex;
+  const prevMonthLastDate = new Date(viewYear, viewMonth, 0).getDate();
+  const monthMarkers = daysWithMealsInMonth(viewYear, viewMonth);
+  const totalCells = Math.ceil((prevMonthDays + daysInMonth) / 7) * 7;
+
+  for(let i = 0; i < totalCells; i++){
+    const cell = document.createElement('div');
+    cell.className = 'day';
+    let dayNum = i - prevMonthDays + 1;
+    let cellDate = null;
+    if(dayNum < 1){
+      cell.classList.add('other');
+      const num = prevMonthLastDate + dayNum;
+      cell.textContent = num;
+      const prevMonthDate = new Date(viewYear, viewMonth -1, num);
+      cellDate = toISODate(prevMonthDate);
+    } else if(dayNum > daysInMonth){
+      cell.classList.add('other');
+      const num = dayNum - daysInMonth;
+      cell.textContent = num;
+      const nextMonthDate = new Date(viewYear, viewMonth +1, num);
+      cellDate = toISODate(nextMonthDate);
+    } else {
+      cell.textContent = dayNum;
+      const d = new Date(viewYear, viewMonth, dayNum);
+      cellDate = toISODate(d);
+      if(cellDate === toISODate(new Date())) cell.classList.add('today');
+      if(cellDate === selectedDate) cell.classList.add('selected');
+      if(monthMarkers[cellDate]) cell.classList.add('has-meal');
+    }
+
+    cell.addEventListener('click', ()=>{
+      const d = parseISO(cellDate);
+      if(d.getFullYear() !== viewYear || d.getMonth() !== viewMonth){
+        viewYear = d.getFullYear();
+        viewMonth = d.getMonth();
+        selectedDate = cellDate;
+        selectedDateInput.value = selectedDate;
+        renderCalendar();
+        renderForSelectedDate();
+      } else {
+        selectedDate = cellDate;
+        selectedDateInput.value = selectedDate;
+        renderCalendar();
+        renderForSelectedDate();
+      }
+    });
+
+    daysGrid.appendChild(cell);
+  }
+}
+
+/* Render for selectedDate */
+function renderForSelectedDate(){
+  selectedDateLabel.textContent = formatDateLabel(selectedDate);
+  selectedDateLabelShort.textContent = selectedDate;
+  const t = totalsForDate(selectedDate);
+
+  totalMealsEl.textContent = t.count;
+  totalCaloriesEl.textContent = Math.round(t.cal) + ' kcal';
+  totalProteinesEl.textContent = Math.round(t.p) + ' g';
+  totalGlucidesEl.textContent = Math.round(t.c) + ' g';
+
+  statusCalories.textContent = Math.round(t.cal) + ' kcal';
+  totalProteinesShort.textContent = Math.round(t.p) + ' g';
+  totalGlucidesShort.textContent = Math.round(t.c) + ' g';
+  totalProteinesShort2.textContent = Math.round(t.p) + ' g';
+  totalGlucidesShort2.textContent = Math.round(t.c) + ' g';
+  totalLipidesShort.textContent = Math.round(t.f) + ' g';
+  dayTotalsShort.textContent = `${Math.round(t.cal)} kcal • ${Math.round(t.p)} g P • ${Math.round(t.c)} g C`;
+
+  const percent = profile.goalCalories ? Math.min(100, Math.round((t.cal / profile.goalCalories) * 100)) : 0;
+  progressBar.style.width = percent + '%';
+  percentReached.textContent = percent + '%';
+
+  // update dashboard progress
+  if(dashboardProgress){
+    dashboardProgress.style.width = percent + '%';
+    dashboardPercent.textContent = percent + '%';
+  }
+
+  const items = meals.filter(m => m.date === selectedDate);
+  mealsContainer.innerHTML = '';
+  if(items.length === 0){
+    emptyState.style.display = 'block';
+  } else {
+    emptyState.style.display = 'none';
+    items.forEach((m, idx)=>{
+      const div = document.createElement('div'); div.className = 'meal-item';
+      const left = document.createElement('div'); left.className = 'meal-left';
+      const av = document.createElement('div'); av.className = 'avatar'; av.textContent = (m.aliment||'').split(' ').map(s=>s[0]||'').slice(0,2).join('').toUpperCase();
+      const meta = document.createElement('div'); meta.className = 'meal-meta';
+      const title = document.createElement('strong'); title.textContent = `${m.categorie} • ${m.aliment}`;
+      const sub = document.createElement('small'); sub.textContent = `${m.quantite||''} • ${Math.round(m.calories||0)} kcal • ${Math.round(m.proteines||0)} g P`;
+      meta.appendChild(title); meta.appendChild(sub);
+      left.appendChild(av); left.appendChild(meta);
+
+      const actions = document.createElement('div'); actions.className = 'meal-actions';
+      const edit = document.createElement('button'); edit.className = 'icon-btn'; edit.title='Modifier'; edit.innerHTML = '✎';
+      edit.addEventListener('click', ()=> populateFormForEdit(getGlobalIndexOfMeal(m)));
+      const del = document.createElement('button'); del.className = 'icon-btn del'; del.title='Supprimer'; del.innerHTML = '🗑';
+      del.addEventListener('click', ()=> {
+        if(confirm(`Supprimer "${m.aliment}" ?`)){
+          const gidx = getGlobalIndexOfMeal(m);
+          if(gidx >= 0){
+            meals.splice(gidx,1);
+            saveMeals();
+            renderCalendar();
+            renderForSelectedDate();
+          }
+        }
+      });
+      actions.appendChild(edit); actions.appendChild(del);
+
+      div.appendChild(left); div.appendChild(actions);
+      mealsContainer.appendChild(div);
+    });
+  }
+}
+
+/* Find global index of meal */
+function getGlobalIndexOfMeal(meal){
+  let idx = meals.indexOf(meal);
+  if(idx >= 0) return idx;
+  for(let i=0;i<meals.length;i++){
+    const m = meals[i];
+    if(m.date === meal.date && m.aliment === meal.aliment && m.quantite === meal.quantite && Number(m.calories) === Number(meal.calories) && Number(m.proteines) === Number(meal.proteines)) return i;
+  }
+  return -1;
+}
+
+/* Edit handling */
+let editingIndex = -1;
+function populateFormForEdit(globalIndex){
+  const m = meals[globalIndex];
+  document.getElementById('aliment').value = m.aliment || '';
+  document.getElementById('categorie').value = m.categorie || 'Plat';
+  document.getElementById('quantite').value = m.quantite || '';
+  document.getElementById('calories').value = m.calories ?? '';
+  document.getElementById('proteines').value = m.proteines ?? '';
+  document.getElementById('glucides').value = m.glucides ?? '';
+  document.getElementById('lipides').value = m.lipides ?? '';
+  selectedDate = m.date || selectedDate;
+  selectedDateInput.value = selectedDate;
+  const d = parseISO(selectedDate);
+  viewYear = d.getFullYear(); viewMonth = d.getMonth();
+  renderCalendar();
+  renderForSelectedDate();
+  addBtn.textContent = 'Enregistrer';
+  editingIndex = globalIndex;
+}
+
+/* Submit form */
+mealForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const meal = {
+    date: selectedDate,
+    categorie: document.getElementById('categorie').value || 'Plat',
+    aliment: document.getElementById('aliment').value.trim() || 'Aliment',
+    quantite: document.getElementById('quantite').value.trim() || '',
+    calories: Number(document.getElementById('calories').value) || 0,
+    proteines: Number(document.getElementById('proteines').value) || 0,
+    glucides: Number(document.getElementById('glucides').value) || 0,
+    lipides: Number(document.getElementById('lipides').value) || 0
+  };
+  if(editingIndex >= 0){
+    meals[editingIndex] = meal;
+    editingIndex = -1;
+    addBtn.textContent = 'Ajouter';
+  } else {
+    meals.push(meal);
+  }
+  saveMeals();
+  renderCalendar();
+  renderForSelectedDate();
+  mealForm.reset();
+});
+
+/* Clear form */
+clearBtn.addEventListener('click', ()=>{
+  mealForm.reset();
+  editingIndex = -1;
+  addBtn.textContent = 'Ajouter';
+});
+
+/* Date input change */
+selectedDateInput.addEventListener('change', (e)=>{
+  selectedDate = e.target.value;
+  const d = parseISO(selectedDate);
+  viewYear = d.getFullYear(); viewMonth = d.getMonth();
+  renderCalendar();
+  renderForSelectedDate();
+});
+
+/* Today button */
+document.getElementById('todayBtn').addEventListener('click', ()=>{
+  selectedDate = toISODate(new Date());
+  selectedDateInput.value = selectedDate;
+  const d = parseISO(selectedDate);
+  viewYear = d.getFullYear(); viewMonth = d.getMonth();
+  renderCalendar();
+  renderForSelectedDate();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+/* Calendar nav */
+prevMonthBtn.addEventListener('click', ()=>{ viewMonth--; if(viewMonth < 0){ viewMonth = 11; viewYear--; } renderCalendar(); });
+nextMonthBtn.addEventListener('click', ()=>{ viewMonth++; if(viewMonth > 11){ viewMonth = 0; viewYear++; } renderCalendar(); });
+
+/* Navigation (nav icons restored behavior) */
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const page = btn.getAttribute('data-page');
+    if(page === 'dashboard') document.getElementById('dashTitle').scrollIntoView({behavior:'smooth'});
+    else if(page === 'add') document.getElementById('mealForm').scrollIntoView({behavior:'smooth', block:'center'});
+    else if(page === 'scan') { openScannerModal && openScannerModal(); }
+    else if(page === 'account') { window.location.href = 'account.html'; }
+  });
+});
+
+/* Initialisation */
+initSelectedDate();
+renderCalendar();
+renderForSelectedDate();
+
+/* react to storage changes */
+window.addEventListener('storage', (e)=>{
+  if(e.key === PROFILE_KEY){
+    try{ profile = Object.assign(profile, JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}')); }catch(e){}
+    renderForSelectedDate();
+  } else if(e.key === STORAGE_KEY){
+    try{ meals = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }catch(e){}
+    renderCalendar();
+    renderForSelectedDate();
+  }
+});
+
+/* ---------- Barcode scanner logic using ZXing (with fallback) ---------- */
+const scannerModal = document.getElementById('scannerModal');
+const scannerVideo = document.getElementById('scannerVideo');
+const openScannerBtn = document.getElementById('openScannerBtn');
+const closeScannerBtn = document.getElementById('closeScannerBtn');
+const startScannerBtn = document.getElementById('startScannerBtn');
+const stopScannerBtn = document.getElementById('stopScannerBtn');
+const videoSelect = document.getElementById('videoSelect');
+const scanResult = document.getElementById('scanResult');
+const useScanBtn = document.getElementById('useScanBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const uploadImage = document.getElementById('uploadImage');
+
+let codeReader = null;
+let currentStreamDeviceId = null;
+
+function openScannerModal(){
+  scannerModal.classList.add('active');
+  scannerModal.setAttribute('aria-hidden','false');
+  populateVideoDevices();
+}
+function closeScannerModal(){
+  scannerModal.classList.remove('active');
+  scannerModal.setAttribute('aria-hidden','true');
+  stopScanning();
+  scanResult.textContent = '—';
+}
+
+openScannerBtn.addEventListener('click', openScannerModal);
+closeScannerBtn.addEventListener('click', closeScannerModal);
+
+async function populateVideoDevices(){
+  videoSelect.innerHTML = '';
+  try{
+    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+    if(devices && devices.length){
+      devices.forEach(d=>{
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `Camera ${videoSelect.length+1}`;
+        videoSelect.appendChild(opt);
+      });
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Caméra par défaut';
+      videoSelect.appendChild(opt);
+    }
+  }catch(err){
+    console.warn('Could not list devices', err);
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Caméra par défaut';
+    videoSelect.appendChild(opt);
+  }
+}
+
+startScannerBtn.addEventListener('click', async ()=>{
+  await startScanning();
+});
+stopScannerBtn.addEventListener('click', ()=> {
+  stopScanning();
+});
+
+async function startScanning(){
+  // create reader if needed
+  if(!codeReader) codeReader = new ZXing.BrowserMultiFormatReader();
+  scanResult.textContent = '…Recherche en cours';
+  const deviceId = videoSelect.value || null;
+  currentStreamDeviceId = deviceId;
+  try{
+    // decodeFromVideoDevice will stream to video and call callback on detection
+    await codeReader.decodeFromVideoDevice(deviceId, scannerVideo, (result, err) => {
+      if(result){
+        // got barcode
+        scanResult.textContent = result.text;
+        // stop scanning after first result
+        try{ codeReader.reset(); }catch(e){}
+      }
+      if(err && !(err instanceof ZXing.NotFoundException)){
+        // other errors can be logged
+        console.warn(err);
+      }
+    });
+  }catch(e){
+    console.error('Scanner start failed', e);
+    scanResult.textContent = 'Impossible d\'accéder à la caméra';
+  }
+}
+
+function stopScanning(){
+  if(codeReader){
+    try{ codeReader.reset(); }catch(e){}
+  }
+  // stop any tracks on video element
+  try{
+    const stream = scannerVideo.srcObject;
+    if(stream){
+      stream.getTracks().forEach(t=>t.stop());
+      scannerVideo.srcObject = null;
+    }
+  }catch(e){ /* ignore */ }
+}
+
+/* Use scan result to fill aliment input */
+useScanBtn.addEventListener('click', ()=>{
+  const text = scanResult.textContent && scanResult.textContent !== '—' ? scanResult.textContent : '';
+  if(!text) return alert('Aucun code détecté');
+  // insert code into aliment input (user can edit)
+  document.getElementById('aliment').value = text;
+  closeScannerModal();
+});
+
+/* fallback: scan from uploaded image file */
+uploadBtn.addEventListener('click', ()=> uploadImage.click());
+uploadImage.addEventListener('change', async (ev)=>{
+  const file = ev.target.files && ev.target.files[0];
+  if(!file) return;
+  scanResult.textContent = 'Analyse de l\'image…';
+  try{
+    // use ZXing to decode from image
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    await img.decode();
+    // ZXing UMD provides a decodeFromImage API via BrowserMultiFormatReader
+    if(!codeReader) codeReader = new ZXing.BrowserMultiFormatReader();
+    codeReader.decodeFromImage(img).then(result=>{
+      scanResult.textContent = result.text;
+      useScanBtn.focus();
+      URL.revokeObjectURL(img.src);
+    }).catch(err=>{
+      console.warn('Decode image failed', err);
+      scanResult.textContent = 'Aucun code détecté dans l\'image';
+      URL.revokeObjectURL(img.src);
+    });
+  }catch(e){
+    console.error(e);
+    scanResult.textContent = 'Erreur lors du traitement de l\'image';
+  }
+});
+
+/* If user navigates away or closes modal, ensure camera stops */
+window.addEventListener('beforeunload', ()=> stopScanning());
+
+</script>
+</body>
+</html>

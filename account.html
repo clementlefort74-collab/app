@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Suivi Nutrition — Mon Compte</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#f6f8fb; --card:#fff; --accent:#15b79a; --accent-2:#0f9e85; --muted:#6c7780; --radius:12px }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:"Outfit",system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+    body{background:linear-gradient(180deg,var(--bg),#eef4f8);color:#132a31;padding-bottom:110px}
+    .app{max-width:900px;margin:14px auto;padding:12px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700}
+    .logo img{ width:36px; height:36px; display:block }
+    h1{font-size:17px;margin:0}
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 10px 30px rgba(17,36,45,0.05);border:1px solid rgba(15,25,30,0.03)}
+    form{display:flex;flex-direction:column;gap:10px}
+    label{font-size:13px;color:var(--muted)}
+    input,select{padding:12px;border-radius:10px;border:1px solid rgba(15,25,30,0.06);font-size:14px}
+    .row{display:flex;gap:10px}
+    .row .col{flex:1}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+    .btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(15,25,30,0.04)}
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+    .stat{padding:10px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfffd);text-align:center}
+    .stat small{display:block;color:var(--muted)}
+    .stat strong{display:block;margin-top:6px;font-size:16px}
+    @media (max-width:760px){ .stats-grid{grid-template-columns:repeat(2,1fr)} .row{flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Suivi Nutrition — Compte">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true" title="Suivi Nutrition">
+          <!-- same inline SVG logo used on l'accueil -->
+          <img alt="Logo SN" src="data:image/svg+xml;utf8,
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'>
+              <defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='%2315b79a'/><stop offset='1' stop-color='%230fa07f'/></linearGradient></defs>
+              <rect width='48' height='48' rx='10' fill='url(%23g)'/>
+              <g fill='white' transform='translate(8,8)'>
+                <path d='M8 0C5.2 0 3 2.2 3 5s2.2 5 5 5 5-2.2 5-5S10.8 0 8 0zm0 2c1.7 0 3 1.3 3 3s-1.3 3-3 3-3-1.3-3-3 1.3-3 3-3z' />
+                <path d='M0 20c0-4.4 4-8 8.9-8h6.2C24 12 28 15.6 28 20v3H0v-3z' opacity='0.95'/>
+              </g>
+            </svg>" />
+        </div>
+        <div>
+          <h1>Mon Compte</h1>
+          <p style="margin:0;color:var(--muted);font-size:13px">Profil, objectifs et totaux de macronutriments</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="index.html" class="btn ghost" style="text-decoration:none;color:inherit">Retour</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2 style="margin:0 0 8px 0">Informations personnelles</h2>
+        <form id="accountForm">
+          <label for="name">Nom</label>
+          <input id="name" type="text" />
+
+          <label for="email">Email</label>
+          <input id="email" type="email" />
+
+          <div class="row">
+            <div class="col">
+              <label for="weight">Poids (kg)</label>
+              <input id="weight" type="number" min="0" step="0.1" />
+            </div>
+            <div class="col">
+              <label for="height">Taille (cm)</label>
+              <input id="height" type="number" min="0" step="0.1" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label for="age">Âge</label>
+              <input id="age" type="number" min="0" />
+            </div>
+            <div class="col">
+              <label for="sex">Sexe</label>
+              <select id="sex"><option value="other">Autre</option><option value="male">Homme</option><option value="female">Femme</option></select>
+            </div>
+          </div>
+
+          <label for="dietType">Type de régime</label>
+          <select id="dietType">
+            <option value="none">Aucun / Standard</option>
+            <option value="vegetarian">Végétarien</option>
+            <option value="vegan">Végan</option>
+            <option value="keto">Keto</option>
+            <option value="paleo">Paléo</option>
+          </select>
+
+          <div class="row">
+            <div class="col">
+              <label for="goalCalories">Objectif calories (kcal)</label>
+              <input id="goalCaloriesInp" type="number" min="0" />
+            </div>
+            <div class="col">
+              <label for="goalProteins">Objectif protéines (g)</label>
+              <input id="goalProteins" type="number" min="0" />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <button id="saveProfile" type="button" class="btn">Sauvegarder</button>
+            <button id="resetProfile" type="button" class="btn ghost">Réinitialiser</button>
+          </div>
+
+          <div style="margin-top:10px;color:var(--muted)">
+            IMC: <strong id="imcValue">—</strong>
+            • Objectif poids: <strong id="targetWeight">—</strong> kg
+          </div>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top:12px">
+        <h3 style="margin:0 0 8px 0">Totaux (tous repas sauvegardés)</h3>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:8px">Les totaux sont lus depuis les repas enregistrés dans l'application.</div>
+
+        <div class="stats-grid">
+          <div class="stat">
+            <small>Calories</small><strong id="sumCalories">0 kcal</strong>
+          </div>
+          <div class="stat">
+            <small>Protéines</small><strong id="sumProteins">0 g</strong>
+          </div>
+          <div class="stat">
+            <small>Glucides</small><strong id="sumCarbs">0 g</strong>
+          </div>
+          <div class="stat">
+            <small>Lipides</small><strong id="sumFats">0 g</strong>
+          </div>
+          <div class="stat">
+            <small>Repas</small><strong id="sumMeals">0</strong>
+          </div>
+          <div class="stat">
+            <small>% Objectif calories</small><strong id="pctGoal">0%</strong>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const PROFILE_KEY = 'sn_v2_profile';
+    const STORAGE_KEY = 'sn_v2_meals';
+
+    let profile = {
+      name: 'Jean Dupont',
+      email: 'jean.dupont@example.com',
+      weight: 75,
+      height: 175,
+      age: 30,
+      sex: 'other',
+      dietType: 'none',
+      goalCalories: 2000,
+      goalProteins: 120,
+      targetWeight: null
+    };
+
+    try{ const p = localStorage.getItem(PROFILE_KEY); if(p) profile = Object.assign(profile, JSON.parse(p)); }catch(e){ console.warn(e) }
+
+    function readMealsAndTotals(){
+      let meals = [];
+      try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw) meals = JSON.parse(raw); }catch(e){ console.warn(e) }
+      const totals = meals.reduce((s,m)=>{
+        s.cal += Number(m.calories||0);
+        s.p += Number(m.proteines||0);
+        s.c += Number(m.glucides||0);
+        s.f += Number(m.lipides||0);
+        s.count += 1;
+        return s;
+      }, {cal:0,p:0,c:0,f:0,count:0});
+      return {meals, totals};
+    }
+
+    const nameEl = document.getElementById('name'), emailEl = document.getElementById('email');
+    const weightEl = document.getElementById('weight'), heightEl = document.getElementById('height');
+    const ageEl = document.getElementById('age'), sexEl = document.getElementById('sex');
+    const dietEl = document.getElementById('dietType'), goalCaloriesInp = document.getElementById('goalCaloriesInp');
+    const goalProteinsInp = document.getElementById('goalProteins'), targetWeightEl = document.getElementById('targetWeight');
+    const imcValueEl = document.getElementById('imcValue');
+    const sumCaloriesEl = document.getElementById('sumCalories'), sumProteinsEl = document.getElementById('sumProteins');
+    const sumCarbsEl = document.getElementById('sumCarbs'), sumFatsEl = document.getElementById('sumFats');
+    const sumMealsEl = document.getElementById('sumMeals'), pctGoalEl = document.getElementById('pctGoal');
+
+    function populateForm(){
+      nameEl.value = profile.name || '';
+      emailEl.value = profile.email || '';
+      weightEl.value = profile.weight || '';
+      heightEl.value = profile.height || '';
+      ageEl.value = profile.age || '';
+      sexEl.value = profile.sex || 'other';
+      dietEl.value = profile.dietType || 'none';
+      goalCaloriesInp.value = profile.goalCalories || 2000;
+      goalProteinsInp.value = profile.goalProteins || 120;
+      targetWeightEl.textContent = profile.targetWeight || '—';
+      calculateBMI();
+      updateTotalsUI();
+    }
+
+    function calculateBMI(){
+      const w = Number(weightEl.value || profile.weight || 0);
+      const h = Number(heightEl.value || profile.height || 0);
+      if(w > 0 && h > 0){
+        const bmi = Math.round((w / Math.pow(h/100,2)) * 10) / 10;
+        imcValueEl.textContent = bmi;
+        return bmi;
+      } else {
+        imcValueEl.textContent = '—';
+        return null;
+      }
+    }
+
+    function updateTotalsUI(){
+      const {meals, totals} = readMealsAndTotals();
+      sumCaloriesEl.textContent = Math.round(totals.cal) + ' kcal';
+      sumProteinsEl.textContent = Math.round(totals.p) + ' g';
+      sumCarbsEl.textContent = Math.round(totals.c) + ' g';
+      sumFatsEl.textContent = Math.round(totals.f) + ' g';
+      sumMealsEl.textContent = totals.count;
+      const pct = profile.goalCalories ? Math.min(100, Math.round((totals.cal / profile.goalCalories) * 100)) : 0;
+      pctGoalEl.textContent = pct + '%';
+    }
+
+    document.getElementById('saveProfile').addEventListener('click', ()=>{
+      profile.name = nameEl.value.trim() || profile.name;
+      profile.email = emailEl.value.trim() || profile.email;
+      profile.weight = Number(weightEl.value) || profile.weight;
+      profile.height = Number(heightEl.value) || profile.height;
+      profile.age = Number(ageEl.value) || profile.age;
+      profile.sex = sexEl.value || profile.sex;
+      profile.dietType = dietEl.value || profile.dietType;
+      profile.goalCalories = Number(goalCaloriesInp.value) || profile.goalCalories;
+      profile.goalProteins = Number(goalProteinsInp.value) || profile.goalProteins;
+      try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }catch(e){ console.warn(e) }
+      calculateBMI();
+      updateTotalsUI();
+      alert('Profil sauvegardé');
+    });
+
+    document.getElementById('resetProfile').addEventListener('click', ()=>{
+      if(!confirm('Réinitialiser le profil aux valeurs par défaut ?')) return;
+      localStorage.removeItem(PROFILE_KEY);
+      profile = { name:'Jean Dupont', email:'jean.dupont@example.com', weight:75, height:175, age:30, sex:'other', dietType:'none', goalCalories:2000, goalProteins:120, targetWeight:null };
+      populateForm();
+      updateTotalsUI();
+    });
+
+    weightEl.addEventListener('input', calculateBMI);
+    heightEl.addEventListener('input', calculateBMI);
+
+    populateForm();
+    window.addEventListener('storage', ()=> { updateTotalsUI(); });
+  </script>
+</body>
+</html>
