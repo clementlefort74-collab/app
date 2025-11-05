@@ -302,7 +302,7 @@
       <div style="margin-top:10px">
         <label style="font-size:13px;color:var(--muted);">Résultat</label>
         <div id="scanResult" style="padding:8px;border-radius:8px;background:#f6f8fa;border:1px solid rgba(15,25,30,0.03)">—</div>
-        <div style="margin-top:8px;color:var(--muted);font-size:13px">Si le scan trouve un code, vous pouvez l'insérer dans le champ "Aliment".</div>
+        <div style="margin-top:8px;color:var(--muted);font-size:13px">Si le scan trouve un code, vous pouvez l'insérer dans le champ "Aliment" ou laisser l'application pré-remplir via OpenFoodFacts.</div>
         <div style="margin-top:8px;display:flex;gap:8px">
           <button id="useScanBtn" class="btn" type="button">Insérer dans Aliment</button>
           <input id="uploadImage" type="file" accept="image/*" style="display:none" />
@@ -422,6 +422,10 @@ let selectedDate = null;
 let viewYear = null;
 let viewMonth = null;
 
+/* Barcode lookup state */
+let lastScannedBarcode = '';
+let lastProduct = null; // product info from OpenFoodFacts
+
 /* Utilities - use local-date based ISO to avoid UTC shift */
 function toISODate(d){
   const y = d.getFullYear();
@@ -480,6 +484,111 @@ function daysWithMealsInMonth(year, month){
   });
   return out;
 }
+
+/* --- OpenFoodFacts lookup helpers --- */
+async function lookupBarcodeOpenFoodFacts(barcode){
+  // Returns {found: bool, product: {...}} or throws
+  const url = `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`;
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if(data.status === 1 && data.product){
+      return {found:true, product: data.product};
+    } else {
+      return {found:false};
+    }
+  }catch(e){
+    console.warn('lookup error', e);
+    return {found:false, error: e};
+  }
+}
+
+function parseNutriments(product){
+  // Try many keys; return object with calories (per 100g), proteins, carbs, fats, serving_grams (if any)
+  const n = product.nutriments || {};
+  let kcal = null;
+  if(n['energy-kcal_100g']) kcal = Number(n['energy-kcal_100g']);
+  else if(n['energy-kcal']) kcal = Number(n['energy-kcal']);
+  else if(n['energy_100g']) { // usually in kJ
+    const kj = Number(n['energy_100g']);
+    if(!isNaN(kj)) kcal = Math.round(kj / 4.184);
+  }
+  const proteins = Number(n['proteins_100g'] || n['protein_100g'] || 0);
+  const carbs = Number(n['carbohydrates_100g'] || n['carbs_100g'] || 0);
+  const fats = Number(n['fat_100g'] || n['lipids_100g'] || 0);
+
+  // try parse serving_size like "200g"
+  let servingGrams = null;
+  const ss = product.serving_size || product.serving_size_string || '';
+  if(ss){
+    const m = ss.match(/([0-9]+(?:[.,][0-9]+)?)\s*g/i);
+    if(m) servingGrams = Number(m[1].replace(',', '.'));
+  }
+
+  return {kcal_per_100g: isNaN(kcal)? null : kcal, proteins_100g: isNaN(proteins)?0:proteins, carbs_100g: isNaN(carbs)?0:carbs, fats_100g: isNaN(fats)?0:fats, servingGrams};
+}
+
+function applyProductToForm(product){
+  // Fill aliment and nutrition fields if data available.
+  if(!product) return;
+  const name = product.product_name || product.generic_name || product.brands || '';
+  if(name) document.getElementById('aliment').value = name;
+
+  const nutr = parseNutriments(product);
+  // If we have per 100g values and a serving size, fill with per-serving values; otherwise fill per 100g (user can adjust quantity)
+  if(nutr.kcal_per_100g != null){
+    if(nutr.servingGrams){
+      const factor = nutr.servingGrams / 100;
+      document.getElementById('calories').value = Math.round(nutr.kcal_per_100g * factor);
+      document.getElementById('proteines').value = +(nutr.proteins_100g * factor).toFixed(1);
+      document.getElementById('glucides').value = +(nutr.carbs_100g * factor).toFixed(1);
+      document.getElementById('lipides').value = +(nutr.fats_100g * factor).toFixed(1);
+      // set quantity to serving string if available
+      if(product.serving_size) document.getElementById('quantite').value = product.serving_size;
+      else if(nutr.servingGrams) document.getElementById('quantite').value = nutr.servingGrams + ' g';
+    } else {
+      // Fill per 100g as default (user can change)
+      document.getElementById('calories').value = Math.round(nutr.kcal_per_100g);
+      document.getElementById('proteines').value = +(nutr.proteins_100g).toFixed(1);
+      document.getElementById('glucides').value = +(nutr.carbs_100g).toFixed(1);
+      document.getElementById('lipides').value = +(nutr.fats_100g).toFixed(1);
+      // don't change quantity
+    }
+  }
+}
+
+/* Called when a barcode is detected */
+let barcodeLookupInProgress = false;
+async function onBarcodeDetected(barcode){
+  if(!barcode) return;
+  // avoid repeating lookup for same barcode while in progress
+  if(barcode === lastScannedBarcode && barcodeLookupInProgress) return;
+  lastScannedBarcode = barcode;
+  barcodeLookupInProgress = true;
+
+  // show immediate feedback
+  const sr = document.getElementById('scanResult');
+  sr.textContent = `Code détecté : ${barcode} — recherche OpenFoodFacts…`;
+
+  const r = await lookupBarcodeOpenFoodFacts(barcode);
+  if(r && r.found && r.product){
+    lastProduct = r.product;
+    // update scanResult to show product name and brand
+    const pname = r.product.product_name || r.product.generic_name || r.product.brands || 'Produit trouvé';
+    const brand = r.product.brands || '';
+    sr.innerHTML = `<strong>${escapeHtml(pname)}</strong>${brand? ' — ' + escapeHtml(brand):''}`;
+    // prefill form with product data (user can still edit)
+    applyProductToForm(r.product);
+  } else {
+    lastProduct = null;
+    sr.textContent = `Produit non trouvé pour le code ${barcode}`;
+  }
+  barcodeLookupInProgress = false;
+}
+
+/* small helper to escape HTML when inserting into innerHTML */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* Render calendar */
 function renderCalendar(){
@@ -802,7 +911,8 @@ async function startScanning(){
     await codeReader.decodeFromVideoDevice(deviceId, scannerVideo, (result, err) => {
       if(result){
         // got barcode
-        scanResult.textContent = result.text;
+        // call our handler which does OpenFoodFacts lookup and UI updates
+        onBarcodeDetected(result.text);
         // stop scanning after first result
         try{ codeReader.reset(); }catch(e){}
       }
@@ -831,13 +941,19 @@ function stopScanning(){
   }catch(e){ /* ignore */ }
 }
 
-/* Use scan result to fill aliment input */
+/* Use scan result to fill aliment input (button) */
 useScanBtn.addEventListener('click', ()=>{
-  const text = scanResult.textContent && scanResult.textContent !== '—' ? scanResult.textContent : '';
-  if(!text) return alert('Aucun code détecté');
-  // insert code into aliment input (user can edit)
-  document.getElementById('aliment').value = text;
-  closeScannerModal();
+  if(lastProduct){
+    // product found: ensure form pre-filled (applyProductToForm already did), just focus aliment
+    document.getElementById('aliment').focus();
+    closeScannerModal();
+  } else {
+    // fallback: insert raw barcode into aliment field
+    const text = lastScannedBarcode || (scanResult.textContent && scanResult.textContent !== '—' ? scanResult.textContent : '');
+    if(!text) return alert('Aucun code détecté');
+    document.getElementById('aliment').value = text;
+    closeScannerModal();
+  }
 });
 
 /* fallback: scan from uploaded image file */
@@ -854,7 +970,8 @@ uploadImage.addEventListener('change', async (ev)=>{
     // ZXing UMD provides a decodeFromImage API via BrowserMultiFormatReader
     if(!codeReader) codeReader = new ZXing.BrowserMultiFormatReader();
     codeReader.decodeFromImage(img).then(result=>{
-      scanResult.textContent = result.text;
+      // call same handler so we lookup product
+      onBarcodeDetected(result.text);
       useScanBtn.focus();
       URL.revokeObjectURL(img.src);
     }).catch(err=>{
