@@ -14,7 +14,7 @@
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
     .brand{display:flex;gap:12px;align-items:center}
     .logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700}
-    .logo img{ width:36px; height:36px; display:block }
+    .logo img{ width:50px; height:50px; display:block ; border-radius:10px;}
     h1{font-size:17px;margin:0}
     .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 10px 30px rgba(17,36,45,0.05);border:1px solid rgba(15,25,30,0.03)}
     form{display:flex;flex-direction:column;gap:10px}
@@ -44,15 +44,7 @@
     <header>
       <div class="brand">
         <div class="logo" aria-hidden="true" title=" Nutrition">
-          <img alt="Logo SN" src="data:image/svg+xml;utf8,
-            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'>
-              <defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='%2315b79a'/><stop offset='1' stop-color='%230fa07f'/></linearGradient></defs>
-              <rect width='48' height='48' rx='10' fill='url(%23g)'/>
-              <g fill='white' transform='translate(8,8)'>
-                <path d='M8 0C5.2 0 3 2.2 3 5s2.2 5 5 5 5-2.2 5-5S10.8 0 8 0zm0 2c1.7 0 3 1.3 3 3s-1.3 3-3 3-3-1.3-3-3 1.3-3 3-3z' />
-                <path d='M0 20c0-4.4 4-8 8.9-8h6.2C24 12 28 15.6 28 20v3H0v-3z' opacity='0.95'/>
-              </g>
-            </svg>" />
+          <img src="https://firebasestorage.googleapis.com/v0/b/justfit-bed28.firebasestorage.app/o/Eatwise.png?alt=media&token=5d011753-d532-4de1-a720-71b1d8046acd" alt="Logo SN" />
         </div>
         <div>
           <h1>Mon Compte</h1>
@@ -412,53 +404,60 @@
       populateForm(); updateTotalsUI();
     });
 
-    // --- Firebase integration inline (modular SDK) ---
-    // Replace placeholder values with your Firebase project settings
+    // --- Firebase configuration & initialization ---
+    // Placer la configuration tout en haut du script
     const firebaseConfig = {
       apiKey: "AIzaSyC_3k3stpYt3R6ysGOqRUw6UAk-ePYaUCM",
       authDomain: "appp-6ead3.firebaseapp.com",
-      projectId: "appp-6ead3",
-      // optional: storageBucket, messagingSenderId, appId, measurementId
+      projectId: "appp-6ead3"
     };
 
-    // Import modular SDK (v9+) from CDN
-    import {
-      initializeApp
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-
-    import {
-      getAuth,
-      signInAnonymously,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
-    import {
-      getFirestore,
-      doc,
-      setDoc,
-      getDoc,
-      collection,
-      addDoc,
-      getDocs,
-      query,
-      where,
-      orderBy,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
+    // Fonction d'initialisation sûre (évite double init)
     let fbApp = null;
     let fbAuth = null;
     let fbDb = null;
     let fbUid = null;
+    let firebaseInitError = null;
+    
+    function safeInitFirebase() {
+      try {
+        if (!window._firebaseApp) {
+          // Import dynamique des modules Firebase
+          // (nécessaire car on est en type="module")
+          window._firebaseApp = firebase.initializeApp(firebaseConfig);
+        }
+        return window._firebaseApp;
+      } catch (e) {
+        firebaseInitError = e;
+        return null;
+      }
+    }
 
-    try{
-      fbApp = initializeApp(firebaseConfig);
+    // Importer les modules Firebase (modular SDK)
+    import {
+      initializeApp, getApps
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import {
+      getAuth, signInAnonymously, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    // Initialisation unique
+    try {
+      if (!getApps().length) {
+        fbApp = initializeApp(firebaseConfig);
+      } else {
+        fbApp = getApps()[0];
+      }
       fbAuth = getAuth(fbApp);
       fbDb = getFirestore(fbApp);
       firebaseStatusEl.textContent = "Firebase: initialisé";
-    }catch(e){
-      console.warn("Firebase init error", e);
+    } catch (e) {
+      firebaseInitError = e;
       firebaseStatusEl.textContent = "Firebase: initialisation échouée";
+      console.warn("Firebase init error", e);
     }
 
     async function fbSignInAnon(){
@@ -553,19 +552,19 @@
     // Kick auth
     fbSignInAnon();
 
-    // When user saves profile locally, also save to Firestore (if signed)
+    // Quand l'utilisateur sauvegarde le profil localement, sauvegarder aussi sur Firestore (si connecté)
     document.getElementById('saveProfile').addEventListener('click', async () => {
-      // small delay allowed because local handler runs first
+      // petit délai pour laisser le handler local agir d'abord
       await new Promise(r => setTimeout(r, 120));
       try{
         const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
         if(fbUid){
           await fbSaveProfile(stored);
-          firebaseStatusEl.textContent = `Firebase: profil sauvegardé (${fbUid})`;
+          alert('Profil sauvegardé !');
         }
       }catch(e){
         console.warn("Error saving profile to Firestore", e);
-        firebaseStatusEl.textContent = `Firebase: erreur sauvegarde (${e.message})`;
+        alert('Erreur lors de la sauvegarde du profil : ' + e.message);
       }
     });
 
